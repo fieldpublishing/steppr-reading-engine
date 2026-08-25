@@ -12,7 +12,6 @@ import {
   Play,
   Redo2,
   Rewind,
-  Settings2,
   SkipBack,
   SkipForward,
   SunMoon,
@@ -24,6 +23,9 @@ import StepprLogo from "@/components/StepprLogo";
 import WpmDial from "@/components/WpmDial";
 
 const wordSequence = ["re·markable", "attention", "momentum", "deliberate", "possibility"];
+const PREFERENCES_KEY = "steppr.reader.preferences.v1";
+const MIN_WPM = 100;
+const MAX_WPM = 2500;
 const paragraphs = [
   "Every action you take is a vote for the type of person you wish to become. If you want to be healthy, you need to make healthy choices. If you want to be wealthy, you need to make wealthy choices.",
   "You do not rise to the level of your goals. You fall to the level of your systems.",
@@ -35,6 +37,8 @@ const formatTime = (seconds: number) => {
   return `${String(Math.floor(safeSeconds / 60)).padStart(2, "0")}:${String(safeSeconds % 60).padStart(2, "0")}`;
 };
 
+const clampWpm = (value: number) => Math.min(MAX_WPM, Math.max(MIN_WPM, Math.round(value / 25) * 25));
+
 export default function Home() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -45,21 +49,71 @@ export default function Home() {
   const [fontScale, setFontScale] = useState(1);
   const [elapsed, setElapsed] = useState(222);
   const [wordIndex, setWordIndex] = useState(0);
+  const [preferencesReady, setPreferencesReady] = useState(false);
   const totalDuration = 718;
+
+  const changeWord = (direction: 1 | -1) => {
+    setWordIndex((previous) => (previous + direction + wordSequence.length) % wordSequence.length);
+  };
+
+  const updateWpm = (value: number) => setWpm(clampWpm(value));
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(PREFERENCES_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<{ theme: "dark" | "light"; wpm: number; fontScale: number }>;
+        if (parsed.theme === "dark" || parsed.theme === "light") setTheme(parsed.theme);
+        if (typeof parsed.wpm === "number") setWpm(clampWpm(parsed.wpm));
+        if (typeof parsed.fontScale === "number") setFontScale(Math.min(1.25, Math.max(0.85, parsed.fontScale)));
+      }
+    } catch {
+      window.localStorage.removeItem(PREFERENCES_KEY);
+    } finally {
+      setPreferencesReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!preferencesReady) return;
+    window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify({ theme, wpm, fontScale }));
+  }, [fontScale, preferencesReady, theme, wpm]);
 
   useEffect(() => {
     if (!isPlaying) return;
-    const timer = window.setInterval(() => {
-      setElapsed((previous) => (previous >= totalDuration ? 0 : previous + 1));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [isPlaying]);
+    const wordDuration = Math.max(24, 60000 / wpm);
+    const timer = window.setTimeout(() => {
+      changeWord(1);
+      setElapsed((previous) => (previous + wordDuration / 1000 >= totalDuration ? 0 : previous + wordDuration / 1000));
+    }, wordDuration);
+    return () => window.clearTimeout(timer);
+  }, [isPlaying, wpm, wordIndex]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
-      if (event.code === "Space" && !(event.target instanceof HTMLInputElement)) {
+      const target = event.target as HTMLElement | null;
+      const isEditing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target?.isContentEditable;
+      if (isEditing || event.metaKey || event.ctrlKey || event.altKey) return;
+
+      if (event.code === "Space") {
         event.preventDefault();
         setIsPlaying((playing) => !playing);
+      }
+      if (event.key === "ArrowUp" || event.key === "+" || event.key === "=") {
+        event.preventDefault();
+        setWpm((current) => clampWpm(current + 25));
+      }
+      if (event.key === "ArrowDown" || event.key === "-") {
+        event.preventDefault();
+        setWpm((current) => clampWpm(current - 25));
+      }
+      if (event.key === "ArrowRight" || event.key.toLowerCase() === "n") {
+        event.preventDefault();
+        changeWord(1);
+      }
+      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "p") {
+        event.preventDefault();
+        changeWord(-1);
       }
     };
     window.addEventListener("keydown", handleKey);
@@ -72,10 +126,6 @@ export default function Home() {
   const backgroundImage = theme === "dark"
     ? "url('/manus-storage/steppr-dark-signal-field_34499432.png')"
     : "url('/manus-storage/steppr-light-paper-field_ff0d1874.png')";
-
-  const changeWord = (direction: 1 | -1) => {
-    setWordIndex((previous) => (previous + direction + wordSequence.length) % wordSequence.length);
-  };
 
   const resetReader = () => {
     setIsPlaying(false);
@@ -139,7 +189,7 @@ export default function Home() {
           </section>
 
           <section className="control-deck" aria-label="Playback control deck">
-            <WpmDial wpm={wpm} onChange={setWpm} />
+            <WpmDial wpm={wpm} onChange={updateWpm} />
 
             <section className="control-bay playback-bay" aria-label="Playback controls">
               <div className="bay-label">Playback</div>
@@ -154,7 +204,7 @@ export default function Home() {
                 <div className="progress-track"><span style={{ width: `${progress}%` }} /></div>
                 <div className="progress-labels"><span><b>{formatTime(elapsed)}</b> elapsed</span><span><b>{formatTime(totalDuration - elapsed)}</b> remaining</span></div>
               </div>
-              <p className="shortcut-hint">Press <kbd>SPACE</kbd> to {isPlaying ? "pause" : "play"}</p>
+              <p className="shortcut-hint"><kbd>SPACE</kbd> {isPlaying ? "pause" : "play"} <span>·</span> <kbd>↑</kbd><kbd>↓</kbd> speed <span>·</span> <kbd>←</kbd><kbd>→</kbd> sentence</p>
             </section>
 
             <section className="control-bay options-bay" aria-label="Reader options">
