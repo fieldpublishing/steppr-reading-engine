@@ -10,3 +10,4 @@
 - [x] Build local library, testing lab, analytics, and settings prototype views.
 - [x] Validate routed experiences, local persistence, and mobile behavior.
 - [x] Replace the rectangular logo crop with a theme-aware seamless brand treatment.
+- [x] Rebuild the header lockup to match the official Steppr Tech arrangement with no visible white image background.

@@ -27,14 +27,15 @@ type GlobalHeaderProps = {
 
 export default function GlobalHeader({ title = "Atomic Habits — Chapter 1", preferences, updatePreferences, onOpenAccessibility, onOpenMenu }: GlobalHeaderProps) {
   const [location] = useLocation();
-  const isLight = preferences.theme === "light" || preferences.theme === "sepia";
+  const isDark = ["dark", "oled", "amber", "terminal", "matrix"].includes(preferences.theme);
+  const isLight = !isDark;
 
   return (
     <header className="global-header">
       <div className="global-header__top">
         <div className="global-header__brand">
           <button className="global-icon-button global-menu-button" onClick={onOpenMenu} aria-label="Open navigation"><Menu size={19} /></button>
-          <Link href="/" className="global-logo-link"><StepprLogo theme={isLight ? "light" : "dark"} /></Link>
+          <Link href="/" className="global-logo-link"><StepprLogo theme={isDark ? "dark" : "light"} /></Link>
         </div>
         <div className="global-document-title"><BookOpenText size={15} /><span>{title}</span></div>
         <div className="global-header__actions">
