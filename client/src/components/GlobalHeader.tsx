@@ -37,7 +37,7 @@ export default function GlobalHeader({ title = "Atomic Habits — Chapter 1", pr
           <button className="global-icon-button global-menu-button" onClick={onOpenMenu} aria-label="Open navigation"><Menu size={19} /></button>
           <Link href="/" className="global-logo-link"><StepprLogo theme={isDark ? "dark" : "light"} /></Link>
         </div>
-        <div className="global-document-title"><BookOpenText size={15} /><span>{title}</span></div>
+        <div className="global-document-title"><span>{title}</span></div>
         <div className="global-header__actions">
           <button className="appearance-toggle" onClick={() => updatePreferences({ theme: isLight ? "dark" : "light" })} aria-label="Toggle light and dark theme">
             {isLight ? <MoonStar size={17} /> : <SunMedium size={17} />}<span>{isLight ? "Dark" : "Light"}</span>

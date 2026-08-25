@@ -9,7 +9,7 @@ type StepprLogoProps = {
 export default function StepprLogo({ theme }: StepprLogoProps) {
   return (
     <div className={`steppr-logo steppr-logo--${theme}`} aria-label="Steppr Tech">
-      <span className="steppr-logo__book" aria-hidden="true"><i /></span>
+      <span className="steppr-logo__book" aria-hidden="true" />
       <span className="steppr-logo__name"><b>STEPPR.</b><em>TECH</em></span>
     </div>
   );
