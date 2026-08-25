@@ -1,6 +1,6 @@
 /**
- * Instrument Panel design system: canonical Steppr Tech brand asset presented
- * as a compact, high-contrast equipment mark in the reader header.
+ * Instrument Panel design system: transparent Steppr Tech lockup that carries
+ * the supplied folded-book silhouette without the original raster background.
  */
 type StepprLogoProps = {
   theme: "dark" | "light";
@@ -9,7 +9,8 @@ type StepprLogoProps = {
 export default function StepprLogo({ theme }: StepprLogoProps) {
   return (
     <div className={`steppr-logo steppr-logo--${theme}`} aria-label="Steppr Tech">
-      <img src="/manus-storage/steppr-tech-logo_695328b3.png" alt="STEPPR. TECH" />
+      <span className="steppr-logo__mark" aria-hidden="true"><i /></span>
+      <span className="steppr-logo__type"><b>STEPPR.</b><em>TECH</em></span>
     </div>
   );
 }

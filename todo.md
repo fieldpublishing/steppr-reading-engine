@@ -9,3 +9,4 @@
 - [x] Extend the pacing engine with triple-mirror and end-of-session interactions.
 - [x] Build local library, testing lab, analytics, and settings prototype views.
 - [x] Validate routed experiences, local persistence, and mobile behavior.
+- [x] Replace the rectangular logo crop with a theme-aware seamless brand treatment.

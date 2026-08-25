@@ -1,3 +1,5 @@
 # Expanded Steppr System Validation
 
 The Testing Lab route loaded through the global navigation and showed the gated T1–T7 tier matrix. Selecting **Begin local test** transitioned into the three-question comprehension flow with local answer controls and a disabled score action until responses are selected. The global Library link opened the device-local document library, and the persistent Accessibility trigger opened the quick-profile drawer with contrast, motion, letter-spacing, and line-spacing controls. Desktop and mobile visual checks were captured for the dashboard, pacing engine, library, testing lab, analytics, and settings routes.
+
+The header brand treatment was then replaced with a transparent CSS lockup that retains the folded-book silhouette and stacked STEPPR. TECH wordmark without a raster background rectangle. Desktop screenshots confirmed the seamless lockup in the dark dashboard and pacing-engine headers, while a live browser check confirmed clean contrast in the light theme.
