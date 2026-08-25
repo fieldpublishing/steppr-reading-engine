@@ -12,3 +12,4 @@
 - [x] Replace the rectangular logo crop with a theme-aware seamless brand treatment.
 - [x] Rebuild the header lockup to match the official Steppr Tech arrangement with no visible white image background.
 - [x] Make the header logo strictly monochrome and center the active page title without the teal book indicator.
+- [x] Verify the active page title remains centered independently of the logo and controls.
