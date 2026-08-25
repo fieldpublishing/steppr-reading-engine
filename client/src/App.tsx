@@ -5,13 +5,25 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import Analytics from "./pages/Analytics";
+import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
+import Landing from "./pages/Landing";
+import Library from "./pages/Library";
+import Settings from "./pages/Settings";
+import TestingLab from "./pages/TestingLab";
 
 
 function Router() {
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
+      <Route path={"/"} component={Dashboard} />
+      <Route path={"/landing"} component={Landing} />
+      <Route path={"/pacing-engine"} component={Home} />
+      <Route path={"/library"} component={Library} />
+      <Route path={"/testing-lab"} component={TestingLab} />
+      <Route path={"/analytics"} component={Analytics} />
+      <Route path={"/settings"} component={Settings} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

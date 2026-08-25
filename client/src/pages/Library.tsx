@@ -1,0 +1,21 @@
+/** Instrument Panel design system: browser-resident BYOB document library backed by IndexedDB. */
+import { useEffect, useRef, useState } from "react";
+import { BookOpen, FilePlus2, FileText, Grid2X2, List, MoreHorizontal, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { Link } from "wouter";
+import AppFrame from "@/components/AppFrame";
+import { deleteLocalDocument, listLocalDocuments, saveLocalDocument, type LocalDocument } from "@/lib/localStore";
+
+const formatSize = (bytes: number) => bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+
+export default function Library() {
+  const [documents, setDocuments] = useState<LocalDocument[]>([]);
+  const [view, setView] = useState<"grid" | "list">("grid");
+  const [isLoading, setLoading] = useState(true);
+  const [notice, setNotice] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
+  const refresh = async () => { setLoading(true); try { setDocuments(await listLocalDocuments()); } catch { setNotice("This browser blocked local document storage. Try a standard browser profile."); } finally { setLoading(false); } };
+  useEffect(() => { refresh(); }, []);
+  const importFiles = async (files: FileList | null) => { if (!files?.length) return; for (const file of Array.from(files)) await saveLocalDocument(file); setNotice(`${files.length} document${files.length > 1 ? "s" : ""} added locally.`); await refresh(); };
+  const removeDocument = async (id: string) => { await deleteLocalDocument(id); setNotice("Document removed from this browser."); await refresh(); };
+  return <AppFrame title="Library — device-local documents"><section className="page-heading library-heading"><div><span className="eyebrow">BYOB LIBRARY</span><h1>Your documents stay on this device.</h1><p>Import files directly into browser storage. No uploads, accounts, or cloud sync.</p></div><div className="library-heading__actions"><div className="view-toggle"><button className={view === "grid" ? "active" : ""} onClick={() => setView("grid")} aria-label="Grid view"><Grid2X2 size={17} /></button><button className={view === "list" ? "active" : ""} onClick={() => setView("list")} aria-label="List view"><List size={17} /></button></div><button className="primary-cta" onClick={() => fileInput.current?.click()}><Upload size={17} /> Import files</button><input ref={fileInput} className="visually-hidden" type="file" multiple accept=".pdf,.epub,.txt,.md,text/plain,text/markdown,application/pdf" onChange={(event) => importFiles(event.target.files)} /></div></section><section className="local-first-banner"><ShieldCheck size={20} /><div><b>Private library, stored locally</b><span>Files remain in IndexedDB in this browser until you delete them.</span></div></section>{notice && <div className="inline-notice"><span>{notice}</span><button onClick={() => setNotice("")}>Dismiss</button></div>}<section className={`library-content ${view === "list" ? "library-content--list" : ""}`}>{isLoading ? <div className="empty-library">Loading local library…</div> : documents.length === 0 ? <div className="empty-library"><div className="empty-library__icon"><FilePlus2 size={26} /></div><h2>Start with a book from your device.</h2><p>Supported local formats include PDF, EPUB, TXT, and Markdown.</p><button className="primary-cta" onClick={() => fileInput.current?.click()}><Upload size={16} /> Choose local files</button></div> : documents.map((document) => <article className="document-card" key={document.id}><div className="document-card__icon"><FileText size={22} /></div><div className="document-card__main"><span className="document-kind">{document.kind.toUpperCase()}</span><h2>{document.name}</h2><p>{formatSize(document.size)} · {Math.round(document.progress)}% complete</p><div className="document-progress"><span style={{ width: `${document.progress}%` }} /></div></div><div className="document-card__actions"><Link href="/pacing-engine" aria-label={`Read ${document.name}`}><BookOpen size={17} /></Link><button onClick={() => removeDocument(document.id)} aria-label={`Remove ${document.name}`}><Trash2 size={17} /></button><button aria-label={`Document details for ${document.name}`}><MoreHorizontal size={18} /></button></div></article>)}</section></AppFrame>;
+}
