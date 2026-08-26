@@ -46,6 +46,7 @@ export default function Home() {
   const documentId = useMemo(() => new URLSearchParams(window.location.search).get("document"), [location]);
   const readerWords = useMemo(() => tokenize(readerText), [readerText]);
   const sentences = useMemo(() => toSentences(readerText), [readerText]);
+  const currentFocusWord = readerWords[wordIndex] ?? "…";
   const totalDuration = Math.max(30, Math.round((readerWords.length / Math.max(100, preferences.wpm)) * 60));
 
   const changeWord = (direction: 1 | -1) => {
@@ -95,6 +96,23 @@ export default function Home() {
   }, [commaPause, elapsed, isPlaying, mode, preferences.wpm, readerWords, totalDuration, wordIndex]);
 
   useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+    if (!isPlaying || !preferences.ttsEnabled || !currentFocusWord || currentFocusWord === "…") {
+      window.speechSynthesis.cancel();
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(currentFocusWord.replace(/[.,;:!?]+$/g, ""));
+    const selectedVoice = window.speechSynthesis.getVoices().find((voice) => voice.voiceURI === preferences.ttsVoice);
+    if (selectedVoice) utterance.voice = selectedVoice;
+    utterance.rate = preferences.ttsLockToWpm ? Math.min(2, Math.max(0.5, preferences.wpm / 450)) : preferences.ttsRate;
+    utterance.pitch = preferences.ttsPitch;
+    utterance.volume = preferences.ttsVolume;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    return () => window.speechSynthesis.cancel();
+  }, [currentFocusWord, isPlaying, preferences.ttsEnabled, preferences.ttsLockToWpm, preferences.ttsPitch, preferences.ttsRate, preferences.ttsVoice, preferences.ttsVolume, preferences.wpm]);
+
+  useEffect(() => {
     if (elapsed >= totalDuration) {
       setIsPlaying(false);
       setShowAchievement(true);
@@ -141,10 +159,11 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [changeSentence, updatePreferences]);
 
-  const word = readerWords[wordIndex] ?? "…";
+  const word = currentFocusWord;
   const focusIndex = useMemo(() => Math.max(1, Math.min(word.length - 2, Math.round(word.length * 0.42))), [word]);
   const progress = Math.min(100, (elapsed / totalDuration) * 100);
   const themeClass = `theme-${preferences.theme}`;
+  const typeface = { system: '"DM Sans", Arial, sans-serif', atkinson: '"Atkinson Hyperlegible", Arial, sans-serif', dyslexic: '"OpenDyslexic", "Comic Sans MS", sans-serif', mono: 'ui-monospace, "SFMono-Regular", Consolas, monospace' }[preferences.typeface];
   const backgroundImage = preferences.theme === "light" || preferences.theme === "sepia"
     ? "url('/manus-storage/steppr-light-paper-field_ff0d1874.png')"
     : "url('/manus-storage/steppr-dark-signal-field_34499432.png')";
@@ -154,7 +173,7 @@ export default function Home() {
   const contextSentences = sentences.slice(Math.max(0, activeSentenceIndex - 1), activeSentenceIndex + 2);
 
   return (
-    <main className={`steppr-app ${themeClass} ${preferences.highContrast ? "high-contrast" : ""} ${preferences.reducedMotion ? "motion-reduced" : ""}`} style={{ "--steppr-field": backgroundImage, "--reader-letter-spacing": `${preferences.letterSpacing}em`, "--reader-line-height": preferences.lineSpacing } as React.CSSProperties}>
+    <main className={`steppr-app ${themeClass} ${preferences.highContrast ? "high-contrast" : ""} ${preferences.reducedMotion ? "motion-reduced" : ""}`} style={{ "--steppr-field": backgroundImage, "--reader-letter-spacing": `${preferences.letterSpacing}em`, "--reader-line-height": preferences.lineSpacing, "--reader-paragraph-gap": `${preferences.paragraphGap}em`, "--reader-font-family": typeface } as React.CSSProperties}>
       <GlobalHeader title={documentTitle} preferences={preferences} updatePreferences={updatePreferences} onOpenAccessibility={() => setAccessibilityOpen(true)} onOpenMenu={() => setSidebarOpen(true)} />
       <aside className={`reader-sidebar ${isSidebarOpen ? "is-open" : ""}`} aria-label="Reader navigation">
         <div className="sidebar-topline"><span className="tiny-status"><span /> LOCAL SESSION</span><button className="global-icon-button" onClick={() => setSidebarOpen(false)} aria-label="Close navigation"><ChevronLeft size={18} /></button></div>
@@ -204,7 +223,7 @@ export default function Home() {
               <div className="bay-label">Mode & options</div>
               <div className="mode-switch" role="group" aria-label="Reading mode"><button className={mode === "fast" ? "active" : ""} onClick={() => setMode("fast")}><Zap size={15} /> Fast mode</button><button className={mode === "breathing" ? "active" : ""} onClick={() => setMode("breathing")}><span className="wave">⌁</span> Sentence breathing</button></div>
               <label className="setting-line"><span>Breathing room <b>{Math.round(commaPause * 1000)}ms</b></span><input type="range" min="0.5" max="3" step="0.1" value={commaPause} onChange={(event) => setCommaPause(Number(event.target.value))} aria-label="Punctuation pause multiplier" /></label>
-              <div className="font-setting"><span>Font scale</span><div className="scale-control"><button onClick={() => updatePreferences((current) => ({ fontScale: current.fontScale - 0.05 }))} aria-label="Decrease font scale">−</button><span>Aa</span><button onClick={() => updatePreferences((current) => ({ fontScale: current.fontScale + 0.05 }))} aria-label="Increase font scale">+</button></div></div>
+              <div className="font-setting"><span>Font scale</span><div className="scale-control"><button onClick={() => updatePreferences((current) => ({ fontScale: current.fontScale - 0.05 }))} aria-label="Decrease font scale">−</button><span>Aa</span><button onClick={() => updatePreferences((current) => ({ fontScale: current.fontScale + 0.05 }))} aria-label="Increase font scale">+</button></div><button className={`tts-follow-toggle ${preferences.ttsEnabled ? "active" : ""}`} onClick={() => updatePreferences((current) => ({ ttsEnabled: !current.ttsEnabled }))}><Volume2 size={14} /> Voice follow {preferences.ttsEnabled ? "on" : "off"}</button></div>
             </section>
           </section>
         </div>

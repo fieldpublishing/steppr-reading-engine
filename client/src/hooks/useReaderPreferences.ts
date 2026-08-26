@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 
 export type StepprTheme = "dark" | "light" | "oled" | "sepia" | "amber" | "terminal" | "solarized" | "paper" | "matrix";
+export type ReaderTypeface = "system" | "atkinson" | "dyslexic" | "mono";
 
 export type ReaderPreferences = {
   theme: StepprTheme;
@@ -15,6 +16,14 @@ export type ReaderPreferences = {
   tripleMirror: boolean;
   letterSpacing: number;
   lineSpacing: number;
+  paragraphGap: number;
+  typeface: ReaderTypeface;
+  ttsVoice: string;
+  ttsEnabled: boolean;
+  ttsLockToWpm: boolean;
+  ttsRate: number;
+  ttsPitch: number;
+  ttsVolume: number;
 };
 
 export const READER_PREFERENCES_KEY = "steppr.reader.preferences.v2";
@@ -28,6 +37,14 @@ export const defaultReaderPreferences: ReaderPreferences = {
   tripleMirror: false,
   letterSpacing: 0,
   lineSpacing: 1.58,
+  paragraphGap: 0.9,
+  typeface: "system",
+  ttsVoice: "",
+  ttsEnabled: false,
+  ttsLockToWpm: true,
+  ttsRate: 1,
+  ttsPitch: 1,
+  ttsVolume: 1,
 };
 
 const normalize = (candidate: Partial<ReaderPreferences>): ReaderPreferences => ({
@@ -37,6 +54,10 @@ const normalize = (candidate: Partial<ReaderPreferences>): ReaderPreferences => 
   fontScale: Math.min(1.4, Math.max(0.85, candidate.fontScale ?? defaultReaderPreferences.fontScale)),
   letterSpacing: Math.min(0.16, Math.max(0, candidate.letterSpacing ?? defaultReaderPreferences.letterSpacing)),
   lineSpacing: Math.min(2.1, Math.max(1.25, candidate.lineSpacing ?? defaultReaderPreferences.lineSpacing)),
+  paragraphGap: Math.min(2.5, Math.max(0.4, candidate.paragraphGap ?? defaultReaderPreferences.paragraphGap)),
+  ttsRate: Math.min(2, Math.max(0.5, candidate.ttsRate ?? defaultReaderPreferences.ttsRate)),
+  ttsPitch: Math.min(2, Math.max(0.5, candidate.ttsPitch ?? defaultReaderPreferences.ttsPitch)),
+  ttsVolume: Math.min(1, Math.max(0, candidate.ttsVolume ?? defaultReaderPreferences.ttsVolume)),
 });
 
 export function useReaderPreferences() {

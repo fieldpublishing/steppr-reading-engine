@@ -190,11 +190,26 @@ export async function deleteLocalDocument(id: string): Promise<void> {
   database.close();
 }
 
+export async function putLocalDocument(document: LocalDocument): Promise<void> {
+  const database = await openDatabase();
+  const transaction = database.transaction("documents", "readwrite");
+  await transactionResult(transaction.objectStore("documents").put(document));
+  database.close();
+}
+
 export async function saveReadingSession(session: ReadingSession): Promise<void> {
   const database = await openDatabase();
   const transaction = database.transaction("sessions", "readwrite");
   await transactionResult(transaction.objectStore("sessions").put(session));
   database.close();
+}
+
+export async function listReadingSessions(): Promise<ReadingSession[]> {
+  const database = await openDatabase();
+  const transaction = database.transaction("sessions", "readonly");
+  const sessions = await transactionResult(transaction.objectStore("sessions").getAll()) as ReadingSession[];
+  database.close();
+  return sessions.sort((a, b) => b.startedAt - a.startedAt);
 }
 
 export async function getLocalTelemetry(): Promise<LocalTelemetry> {
@@ -213,4 +228,20 @@ export async function updateLocalTelemetry(update: Partial<Omit<LocalTelemetry, 
   await transactionResult(transaction.objectStore("telemetry").put(next));
   database.close();
   return next;
+}
+
+export async function replaceLocalTelemetry(telemetry: LocalTelemetry): Promise<void> {
+  const database = await openDatabase();
+  const transaction = database.transaction("telemetry", "readwrite");
+  await transactionResult(transaction.objectStore("telemetry").put({ ...telemetry, id: "lifetime" }));
+  database.close();
+}
+
+export async function deleteLocalDatabase(): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const request = window.indexedDB.deleteDatabase(DATABASE_NAME);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error("Close other Steppr tabs before purging local data."));
+  });
 }

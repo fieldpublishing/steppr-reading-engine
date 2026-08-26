@@ -18,3 +18,8 @@
 - [x] Harden dual ORP playback, WPM, sentence breathing, keyboard shortcuts, and font scaling.
 - [x] Reduce Settings to theme selection and global font scale controls.
 - [x] Validate imports, persistence, routing, and reader-control flows.
+- [x] Add tabbed Display, Accessibility, Audio, Data & Privacy, and Shortcuts settings architecture.
+- [x] Implement browser-local Web Speech TTS controls and reader synchronization.
+- [x] Add accessibility typography, spacing, contrast, and reduced-motion settings with legal notice.
+- [x] Add local storage status, persistence requests, JSON import/export, and purge controls.
+- [x] Validate advanced settings tabs, browser-local flows, and reader behavior.
