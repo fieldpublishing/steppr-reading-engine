@@ -44,6 +44,7 @@ export default function Home() {
   const [readerText, setReaderText] = useState(sampleReaderText);
   const [documentTitle, setDocumentTitle] = useState("Atomic Habits — Chapter 1");
   const documentId = useMemo(() => new URLSearchParams(window.location.search).get("document"), [location]);
+  const requestedWpm = useMemo(() => Number(new URLSearchParams(window.location.search).get("wpm")), [location]);
   const readerWords = useMemo(() => tokenize(readerText), [readerText]);
   const sentences = useMemo(() => toSentences(readerText), [readerText]);
   const currentFocusWord = readerWords[wordIndex] ?? "…";
@@ -81,6 +82,10 @@ export default function Home() {
     loadDocument().catch(() => undefined);
     return () => { active = false; };
   }, [documentId]);
+
+  useEffect(() => {
+    if (Number.isFinite(requestedWpm) && requestedWpm >= 100 && requestedWpm <= 3700 && requestedWpm !== preferences.wpm) updatePreferences({ wpm: requestedWpm });
+  }, [preferences.wpm, requestedWpm, updatePreferences]);
 
   useEffect(() => {
     if (!isPlaying || elapsed >= totalDuration) return;

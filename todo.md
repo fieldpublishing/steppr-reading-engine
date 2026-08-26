@@ -23,3 +23,7 @@
 - [x] Add accessibility typography, spacing, contrast, and reduced-motion settings with legal notice.
 - [x] Add local storage status, persistence requests, JSON import/export, and purge controls.
 - [x] Validate advanced settings tabs, browser-local flows, and reader behavior.
+- [x] Add IndexedDB-backed local analytics aggregations and dynamic chart rendering.
+- [x] Calculate live reader totals, active days, focus time, weighted WPM, and reading-time estimates.
+- [x] Implement paced T1–T7 diagnostics, recall scoring, and local diagnostic-history persistence.
+- [x] Validate analytics calculations and the end-to-end diagnostic flow.

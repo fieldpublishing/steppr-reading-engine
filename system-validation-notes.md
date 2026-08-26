@@ -15,3 +15,11 @@ Browser-console verification created a TXT File object, parsed it, stored it in 
 Advanced-settings validation confirmed the five-tab navigation in the live Settings page. The Audio tab rendered browser-local Voice Follow, system-voice selection, current-WPM speed lock, pitch, volume, and test/stop controls. In the current browser, no local voices were reported yet, so the UI correctly retains the default browser-voice fallback.
 
 The Data & Privacy tab rendered live browser storage estimates, persistent-storage status, privacy commitments, JSON export/import controls, and the confirmed local-data purge action. The Accessibility tab rendered its four requested typeface choices, letter-spacing, line-height, paragraph-gap, high-contrast, reduced-motion controls, and the full Functional Disclaimer & Legal Notice.
+
+Live analytics and Testing Lab validation confirmed that Analytics is derived from local session history rather than preview constants. The Testing Lab exposes all seven selectable baseline tiers. The T7 selection updated its readiness badge, descriptive tier name, and exact 3,400-WPM passage pace before the diagnostic began.
+
+The T7 passage advanced through all 51 words using the selected 3,400-WPM timing and then transitioned directly into the three-question recall prompt. The resulting recall screen showed the appropriate answer controls and kept the score action disabled until each question was answered.
+
+During live validation, the first two recall responses updated the progress state from 0 of 3 to 2 of 3 without allowing premature scoring.
+
+After the final correct response, the diagnostic created a 100% local recall result and added it to IndexedDB-backed diagnostic history. Validation also revealed that recall-answer time was initially included in observed-WPM timing; the calculation was corrected to use only the paced passage interval, and the diagnostic cadence now uses the reader engine’s same 24ms minimum timing safeguard.

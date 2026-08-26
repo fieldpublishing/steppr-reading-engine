@@ -46,8 +46,21 @@ export type LocalTelemetry = {
   recallAccuracy: number;
 };
 
+export type DiagnosticResult = {
+  id: string;
+  tier: string;
+  baselineWpm: number;
+  actualWpm: number;
+  passageWords: number;
+  correctAnswers: number;
+  totalQuestions: number;
+  comprehensionPercent: number;
+  startedAt: number;
+  completedAt: number;
+};
+
 const DATABASE_NAME = "steppr-local-reader";
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 
 const openDatabase = () => new Promise<IDBDatabase>((resolve, reject) => {
   const request = window.indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
@@ -56,6 +69,7 @@ const openDatabase = () => new Promise<IDBDatabase>((resolve, reject) => {
     if (!database.objectStoreNames.contains("documents")) database.createObjectStore("documents", { keyPath: "id" });
     if (!database.objectStoreNames.contains("sessions")) database.createObjectStore("sessions", { keyPath: "id" });
     if (!database.objectStoreNames.contains("telemetry")) database.createObjectStore("telemetry", { keyPath: "id" });
+    if (!database.objectStoreNames.contains("diagnostics")) database.createObjectStore("diagnostics", { keyPath: "id" });
   };
   request.onsuccess = () => resolve(request.result);
   request.onerror = () => reject(request.error);
@@ -210,6 +224,21 @@ export async function listReadingSessions(): Promise<ReadingSession[]> {
   const sessions = await transactionResult(transaction.objectStore("sessions").getAll()) as ReadingSession[];
   database.close();
   return sessions.sort((a, b) => b.startedAt - a.startedAt);
+}
+
+export async function saveDiagnosticResult(result: DiagnosticResult): Promise<void> {
+  const database = await openDatabase();
+  const transaction = database.transaction("diagnostics", "readwrite");
+  await transactionResult(transaction.objectStore("diagnostics").put(result));
+  database.close();
+}
+
+export async function listDiagnosticResults(): Promise<DiagnosticResult[]> {
+  const database = await openDatabase();
+  const transaction = database.transaction("diagnostics", "readonly");
+  const results = await transactionResult(transaction.objectStore("diagnostics").getAll()) as DiagnosticResult[];
+  database.close();
+  return results.sort((a, b) => b.completedAt - a.completedAt);
 }
 
 export async function getLocalTelemetry(): Promise<LocalTelemetry> {

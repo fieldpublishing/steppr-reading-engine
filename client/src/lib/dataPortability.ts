@@ -1,6 +1,6 @@
 /** Local-only privacy utilities: browser storage estimates plus export/import archives with no network transport. */
 import type { ReaderPreferences } from "@/hooks/useReaderPreferences";
-import { getLocalTelemetry, listLocalDocuments, listReadingSessions, putLocalDocument, replaceLocalTelemetry, saveReadingSession, type LocalDocument, type LocalTelemetry, type ReadingSession } from "@/lib/localStore";
+import { getLocalTelemetry, listDiagnosticResults, listLocalDocuments, listReadingSessions, putLocalDocument, replaceLocalTelemetry, saveDiagnosticResult, saveReadingSession, type DiagnosticResult, type LocalDocument, type LocalTelemetry, type ReadingSession } from "@/lib/localStore";
 
 type ArchivedDocument = Omit<LocalDocument, "blob"> & { blobData?: string };
 
@@ -11,6 +11,7 @@ export type StepprArchive = {
   preferences: Partial<ReaderPreferences>;
   telemetry: LocalTelemetry;
   sessions: ReadingSession[];
+  diagnostics: DiagnosticResult[];
   documents?: ArchivedDocument[];
 };
 
@@ -53,8 +54,8 @@ export async function getStorageSnapshot(preferences: ReaderPreferences): Promis
 }
 
 export async function createMetricsExport(preferences: ReaderPreferences): Promise<StepprArchive> {
-  const [telemetry, sessions] = await Promise.all([getLocalTelemetry(), listReadingSessions()]);
-  return { format: "steppr-local-archive", version: 1, exportedAt: new Date().toISOString(), preferences, telemetry, sessions };
+  const [telemetry, sessions, diagnostics] = await Promise.all([getLocalTelemetry(), listReadingSessions(), listDiagnosticResults()]);
+  return { format: "steppr-local-archive", version: 1, exportedAt: new Date().toISOString(), preferences, telemetry, sessions, diagnostics };
 }
 
 export async function createFullArchive(preferences: ReaderPreferences): Promise<StepprArchive> {
@@ -77,6 +78,7 @@ export async function readAndMergeArchive(file: File): Promise<{ preferences?: P
   if (candidate.format !== "steppr-local-archive" || candidate.version !== 1) throw new Error("Choose a valid Steppr local archive JSON file.");
   if (candidate.telemetry) await replaceLocalTelemetry({ ...candidate.telemetry, id: "lifetime" });
   await Promise.all((candidate.sessions ?? []).map((session) => saveReadingSession(session)));
+  await Promise.all((candidate.diagnostics ?? []).map((result) => saveDiagnosticResult(result)));
   const documents = candidate.documents ?? [];
   await Promise.all(documents.map(async (document) => {
     const restored: LocalDocument = { ...document, blob: fromDataUrl(document.blobData), parseStatus: document.parseStatus ?? "ready", text: document.text ?? "", wordCount: document.wordCount ?? 0 };
