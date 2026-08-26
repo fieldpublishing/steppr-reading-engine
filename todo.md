@@ -32,4 +32,5 @@
 - [x] Align local-only disclaimers and dynamic privacy badges across reader and lab views.
 - [x] Complete final build, console, state-transition, and file-parsing audit.
 - [x] Repair the Vite preview HMR WebSocket connection and verify reconnection stability.
+- [x] Bypass Vite preview modules in the local PWA cache while retaining production offline shell behavior.
 - [x] Apply the final dashboard visual review as an instrument-style status-console refinement.

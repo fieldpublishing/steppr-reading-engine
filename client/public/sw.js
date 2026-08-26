@@ -1,4 +1,4 @@
-const CACHE_NAME = "steppr-local-shell-v1";
+const CACHE_NAME = "steppr-local-shell-v2";
 const APP_SHELL = ["/", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -6,12 +6,20 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(Promise.all([
+    caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))),
+    self.clients.claim(),
+  ]));
 });
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-  if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
+  const url = new URL(request.url);
+  if (request.method !== "GET" || url.origin !== self.location.origin) return;
+  if (url.searchParams.has("from_webdev") || url.pathname.startsWith("/@vite/") || url.pathname.startsWith("/src/")) {
+    event.respondWith(fetch(request));
+    return;
+  }
   event.respondWith(caches.match(request).then((cached) => {
     if (cached) return cached;
     return fetch(request).then((response) => {
