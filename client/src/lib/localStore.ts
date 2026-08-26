@@ -3,13 +3,20 @@
  * Document bytes and extracted text remain in the browser's IndexedDB boundary.
  */
 import JSZip from "jszip";
-import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-GlobalWorkerOptions.workerSrc = pdfWorker;
+let pdfWorkerConfigured = false;
+const loadPdfParser = async () => {
+  const [{ getDocument, GlobalWorkerOptions }, workerModule] = await Promise.all([import("pdfjs-dist"), import("pdfjs-dist/build/pdf.worker.min.mjs?url")]);
+  if (!pdfWorkerConfigured) {
+    GlobalWorkerOptions.workerSrc = workerModule.default;
+    pdfWorkerConfigured = true;
+  }
+  return getDocument;
+};
 
 export type DocumentKind = "pdf" | "epub" | "txt" | "md" | "unknown";
 export type ParseStatus = "ready" | "error";
+export type ParseProgress = { phase: "reading" | "parsing" | "saving"; completed: number; total: number };
 
 export type LocalDocument = {
   id: string;
@@ -19,6 +26,8 @@ export type LocalDocument = {
   importedAt: number;
   lastOpenedAt: number;
   progress: number;
+  resumeSentenceIndex?: number;
+  resumeWordIndex?: number;
   blob: Blob;
   text: string;
   wordCount: number;
@@ -101,18 +110,20 @@ const resolveZipPath = (basePath: string, href: string) => {
   return resolved.join("/");
 };
 
-const parsePdf = async (file: File) => {
+const parsePdf = async (file: File, onProgress?: (progress: ParseProgress) => void) => {
+  const getDocument = await loadPdfParser();
   const pdf = await getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const pages: string[] = [];
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber);
     const content = await page.getTextContent();
     pages.push(content.items.map((item) => "str" in item ? item.str : "").join(" "));
+    onProgress?.({ phase: "parsing", completed: pageNumber, total: pdf.numPages });
   }
   return toPlainText(pages.join("\n\n"));
 };
 
-const parseEpub = async (file: File) => {
+const parseEpub = async (file: File, onProgress?: (progress: ParseProgress) => void) => {
   const archive = await JSZip.loadAsync(file);
   const container = await archive.file("META-INF/container.xml")?.async("text");
   if (!container) throw new Error("The EPUB package is missing its container metadata.");
@@ -123,14 +134,17 @@ const parseEpub = async (file: File) => {
   if (!packageMarkup) throw new Error("The EPUB reading package could not be opened.");
   const packageXml = new DOMParser().parseFromString(packageMarkup, "application/xml");
   const manifest = new Map(Array.from(packageXml.querySelectorAll("manifest > item")).map((item) => [item.getAttribute("id"), item]));
-  const chapters = await Promise.all(Array.from(packageXml.querySelectorAll("spine > itemref")).map(async (entry) => {
+  const spine = Array.from(packageXml.querySelectorAll("spine > itemref"));
+  const chapters: string[] = [];
+  for (let chapterIndex = 0; chapterIndex < spine.length; chapterIndex += 1) {
+    const entry = spine[chapterIndex];
     const item = manifest.get(entry.getAttribute("idref"));
     const href = item?.getAttribute("href");
-    if (!href) return "";
+    if (!href) { chapters.push(""); continue; }
     const markup = await archive.file(resolveZipPath(packagePath, href))?.async("text");
-    if (!markup) return "";
-    return new DOMParser().parseFromString(markup, "text/html").body.textContent ?? "";
-  }));
+    chapters.push(markup ? new DOMParser().parseFromString(markup, "text/html").body.textContent ?? "" : "");
+    onProgress?.({ phase: "parsing", completed: chapterIndex + 1, total: spine.length });
+  }
   return toPlainText(chapters.join("\n\n"));
 };
 
@@ -140,10 +154,12 @@ export const classifyDocument = (name: string): DocumentKind => {
   return "unknown";
 };
 
-export async function parseLocalDocument(file: File): Promise<{ text: string; wordCount: number }> {
+export async function parseLocalDocument(file: File, onProgress?: (progress: ParseProgress) => void): Promise<{ text: string; wordCount: number }> {
   const kind = classifyDocument(file.name);
   if (kind === "unknown") throw new Error("Choose a TXT, Markdown, PDF, or EPUB file.");
-  const text = kind === "pdf" ? await parsePdf(file) : kind === "epub" ? await parseEpub(file) : toPlainText(await file.text());
+  onProgress?.({ phase: "reading", completed: 0, total: 1 });
+  const text = kind === "pdf" ? await parsePdf(file, onProgress) : kind === "epub" ? await parseEpub(file, onProgress) : toPlainText(await file.text());
+  onProgress?.({ phase: "parsing", completed: 1, total: 1 });
   if (!text) throw new Error("No readable text was found in this file.");
   return { text, wordCount: countWords(text) };
 }
@@ -162,13 +178,13 @@ export async function listLocalDocuments(): Promise<LocalDocument[]> {
   }) as LocalDocument).sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
 }
 
-export async function saveLocalDocument(file: File): Promise<LocalDocument> {
+export async function saveLocalDocument(file: File, onProgress?: (progress: ParseProgress) => void): Promise<LocalDocument> {
   const kind = classifyDocument(file.name);
   if (kind === "unknown") throw new Error("Choose a TXT, Markdown, PDF, or EPUB file.");
   const base = { id: crypto.randomUUID(), name: file.name, kind, size: file.size, importedAt: Date.now(), lastOpenedAt: Date.now(), progress: 0, blob: file };
   let document: LocalDocument;
   try {
-    const parsed = await parseLocalDocument(file);
+    const parsed = await parseLocalDocument(file, onProgress);
     document = { ...base, ...parsed, parseStatus: "ready" };
   } catch (error) {
     document = { ...base, text: "", wordCount: 0, parseStatus: "error", parseMessage: error instanceof Error ? error.message : "This document could not be parsed." };
@@ -194,6 +210,15 @@ export async function updateDocumentProgress(id: string, progress: number): Prom
   const store = transaction.objectStore("documents");
   const document = await transactionResult(store.get(id)) as LocalDocument | undefined;
   if (document) await transactionResult(store.put({ ...document, progress: Math.max(0, Math.min(100, progress)), lastOpenedAt: Date.now() }));
+  database.close();
+}
+
+export async function updateDocumentBookmark(id: string, bookmark: { progress: number; sentenceIndex: number; wordIndex: number }): Promise<void> {
+  const database = await openDatabase();
+  const transaction = database.transaction("documents", "readwrite");
+  const store = transaction.objectStore("documents");
+  const document = await transactionResult(store.get(id)) as LocalDocument | undefined;
+  if (document) await transactionResult(store.put({ ...document, progress: Math.max(0, Math.min(100, bookmark.progress)), resumeSentenceIndex: Math.max(0, bookmark.sentenceIndex), resumeWordIndex: Math.max(0, bookmark.wordIndex), lastOpenedAt: Date.now() }));
   database.close();
 }
 

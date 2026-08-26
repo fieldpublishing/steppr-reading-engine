@@ -1,21 +1,23 @@
 /** Instrument Panel design system: app shell for a precise, low-fatigue reading console. */
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { lazy, Suspense } from "react";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Analytics from "./pages/Analytics";
-import Dashboard from "./pages/Dashboard";
-import Home from "./pages/Home";
-import Library from "./pages/Library";
-import Settings from "./pages/Settings";
-import TestingLab from "./pages/TestingLab";
+const Analytics = lazy(() => import("./pages/Analytics"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Home = lazy(() => import("./pages/Home"));
+const Library = lazy(() => import("./pages/Library"));
+const Settings = lazy(() => import("./pages/Settings"));
+const TestingLab = lazy(() => import("./pages/TestingLab"));
 
 
 function Router() {
   return (
-    <Switch>
+    <Suspense fallback={<main className="route-loading">Loading local workspace…</main>}>
+      <Switch>
       <Route path={"/"} component={Dashboard} />
       <Route path={"/pacing-engine"} component={Home} />
       <Route path={"/library"} component={Library} />
@@ -25,7 +27,8 @@ function Router() {
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
-    </Switch>
+      </Switch>
+    </Suspense>
   );
 }
 

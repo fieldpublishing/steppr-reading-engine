@@ -19,7 +19,7 @@ export default function AccessibilityDrawer({ open, onClose, preferences, update
       <button className="accessibility-scrim" onClick={onClose} aria-label="Close accessibility controls" />
       <aside className="accessibility-drawer">
         <header className="drawer-header"><div><span className="eyebrow">LOCAL PREFERENCES</span><h2 id="accessibility-title">Accessibility</h2></div><button className="global-icon-button" onClick={onClose} aria-label="Close accessibility controls"><X size={19} /></button></header>
-        <p className="drawer-intro">These device-local controls adjust only this browser. They do not diagnose, collect, or transmit personal information.</p>
+        <p className="drawer-intro">These device-local controls adjust only this browser. They do not diagnose, collect, or transmit personal information. Not a certified assistive technology or diagnostic tool.</p>
         <div className="quick-profile-grid">
           <button className="quick-profile" onClick={() => updatePreferences({ theme: "oled", highContrast: true, fontScale: 1.2, reducedMotion: true })}><Contrast size={18} /><span><b>High Contrast</b><small>OLED black, larger text, reduced motion</small></span></button>
           <button className="quick-profile" onClick={() => updatePreferences({ fontScale: 1.12, letterSpacing: 0.06, lineSpacing: 1.85, reducedMotion: true, wpm: 650 })}><Focus size={18} /><span><b>Focus Mode</b><small>Spacious type, calmer pace, quiet motion</small></span></button>

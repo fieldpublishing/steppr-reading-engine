@@ -2,10 +2,12 @@
  * Instrument Panel design system: universal navigation and accessible device-local controls.
  * The header keeps every local-first workspace in reach without distracting from the reader.
  */
-import { Accessibility, ChevronRight, FileBarChart, FlaskConical, LayoutDashboard, LibraryBig, Menu, MoonStar, PanelTop, Settings2, SunMedium } from "lucide-react";
+import { Accessibility, ChevronRight, CloudOff, FileBarChart, FlaskConical, LayoutDashboard, LibraryBig, LockKeyhole, Menu, MoonStar, PanelTop, Settings2, SunMedium } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import type { ReaderPreferences } from "@/hooks/useReaderPreferences";
 import StepprLogo from "@/components/StepprLogo";
+import { listLocalDocuments } from "@/lib/localStore";
 
 const navigation = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -28,6 +30,13 @@ export default function GlobalHeader({ title = "Atomic Habits — Chapter 1", pr
   const [location] = useLocation();
   const isDark = ["dark", "oled", "amber", "terminal", "matrix"].includes(preferences.theme);
   const isLight = !isDark;
+  const [localDocumentCount, setLocalDocumentCount] = useState<number>();
+
+  useEffect(() => {
+    let active = true;
+    listLocalDocuments().then((documents) => { if (active) setLocalDocumentCount(documents.length); }).catch(() => { if (active) setLocalDocumentCount(undefined); });
+    return () => { active = false; };
+  }, [location]);
 
   return (
     <header className="global-header">
@@ -50,6 +59,8 @@ export default function GlobalHeader({ title = "Atomic Habits — Chapter 1", pr
           const active = href === "/" ? location === "/" : location.startsWith(href);
           return <Link key={href} href={href} className={`global-nav__link ${active ? "is-active" : ""}`}><Icon size={15} /><span>{label}</span>{active && <ChevronRight size={13} />}</Link>;
         })}
+        <span className="privacy-badge privacy-badge--cloud"><CloudOff size={13} /> 0 Cloud Uploads</span>
+        <span className="privacy-badge"><LockKeyhole size={12} /> {localDocumentCount === undefined ? "Private by Default" : `Private by Default · ${localDocumentCount} local`}</span>
       </nav>
     </header>
   );

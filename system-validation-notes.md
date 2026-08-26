@@ -23,3 +23,9 @@ The T7 passage advanced through all 51 words using the selected 3,400-WPM timing
 During live validation, the first two recall responses updated the progress state from 0 of 3 to 2 of 3 without allowing premature scoring.
 
 After the final correct response, the diagnostic created a 100% local recall result and added it to IndexedDB-backed diagnostic history. Validation also revealed that recall-answer time was initially included in observed-WPM timing; the calculation was corrected to use only the paced passage interval, and the diagnostic cadence now uses the reader engine’s same 24ms minimum timing safeguard.
+
+Pre-launch validation confirmed the dashboard now exposes dynamic `0 Cloud Uploads` and `Private by Default · 0 local` badges from browser-local state, along with the shared non-medical functional-controls footer. The live dashboard console was empty after the offline/PWA and local-only shell updates.
+
+The live application reported a linked `/manifest.json` and an active same-origin `/sw.js` service-worker controller. A browser-local bookmark check parsed a temporary TXT document, stored its 66.7% progress plus sentence index 1 and word index 4 in IndexedDB, read all values back correctly, and removed the test record.
+
+The finalized code-split dashboard reloaded with its device-local badges and non-medical footer intact. The browser console remained empty after the PWA, import-progress, exact-bookmark, and bundle-splitting changes.

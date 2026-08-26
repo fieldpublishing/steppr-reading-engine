@@ -27,3 +27,7 @@
 - [x] Calculate live reader totals, active days, focus time, weighted WPM, and reading-time estimates.
 - [x] Implement paced T1–T7 diagnostics, recall scoring, and local diagnostic-history persistence.
 - [x] Validate analytics calculations and the end-to-end diagnostic flow.
+- [x] Add large-file import progress feedback and exact reader bookmark restoration.
+- [x] Configure offline manifest and service-worker staging with local shell caching.
+- [x] Align local-only disclaimers and dynamic privacy badges across reader and lab views.
+- [x] Complete final build, console, state-transition, and file-parsing audit.

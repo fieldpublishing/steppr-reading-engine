@@ -219,6 +219,16 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom", "wouter"],
+          epub: ["jszip"],
+          pdf: ["pdfjs-dist"],
+          icons: ["lucide-react"],
+        },
+      },
+    },
   },
   server: {
     port: 3000,

@@ -1,0 +1,9 @@
+{
+  "name": "Steppr Tech Reading Engine",
+  "short_name": "Steppr",
+  "description": "A browser-local rapid reading tool.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a"
+}

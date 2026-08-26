@@ -9,7 +9,7 @@ import AccessibilityDrawer from "@/components/AccessibilityDrawer";
 import GlobalHeader from "@/components/GlobalHeader";
 import WpmDial from "@/components/WpmDial";
 import { useReaderPreferences } from "@/hooks/useReaderPreferences";
-import { getLocalDocument, getLocalTelemetry, saveReadingSession, updateDocumentProgress, updateLocalTelemetry } from "@/lib/localStore";
+import { getLocalDocument, getLocalTelemetry, saveReadingSession, updateDocumentBookmark, updateLocalTelemetry } from "@/lib/localStore";
 
 const sampleReaderText = "Every action you take is a vote for the type of person you wish to become. If you want to be healthy, you need to make healthy choices. If you want to be wealthy, you need to make wealthy choices. You do not rise to the level of your goals. You fall to the level of your systems. Here is the most practical way I know to get 1 percent better every day. It’s called the Habits Scorecard. Print it out, fill it in, and begin to track your habits.";
 const tokenize = (text: string) => text.match(/\S+/g) ?? [];
@@ -50,6 +50,12 @@ export default function Home() {
   const currentFocusWord = readerWords[wordIndex] ?? "…";
   const totalDuration = Math.max(30, Math.round((readerWords.length / Math.max(100, preferences.wpm)) * 60));
 
+  const persistBookmark = (nextWordIndex: number) => {
+    if (!documentId) return;
+    const sentenceIndex = Math.max(0, sentences.findIndex((sentence) => nextWordIndex >= sentence.start && nextWordIndex <= sentence.end));
+    updateDocumentBookmark(documentId, { wordIndex: nextWordIndex, sentenceIndex, progress: nextWordIndex / Math.max(1, readerWords.length - 1) * 100 }).catch(() => undefined);
+  };
+
   const changeWord = (direction: 1 | -1) => {
     setWordIndex((previous) => Math.max(0, Math.min(readerWords.length - 1, previous + direction)));
   };
@@ -58,6 +64,7 @@ export default function Home() {
     const currentSentenceIndex = Math.max(0, sentences.findIndex((sentence) => wordIndex >= sentence.start && wordIndex <= sentence.end));
     const target = Math.max(0, Math.min(sentences.length - 1, currentSentenceIndex + direction));
     setWordIndex(sentences[target].start);
+    persistBookmark(sentences[target].start);
   };
 
   useEffect(() => {
@@ -73,10 +80,12 @@ export default function Home() {
       const document = await getLocalDocument(documentId);
       if (!active || !document) return;
       if (document.parseStatus === "ready" && document.text) {
+        const documentSentences = toSentences(document.text);
+        const restoredWordIndex = Math.min(document.text.match(/\S+/g)?.length ?? 0, document.resumeWordIndex ?? documentSentences[Math.min(document.resumeSentenceIndex ?? 0, documentSentences.length - 1)].start);
         setReaderText(document.text);
         setDocumentTitle(document.name);
-        setWordIndex(0);
-        setElapsed(0);
+        setWordIndex(restoredWordIndex);
+        setElapsed(Math.round((document.progress / 100) * Math.max(30, ((document.wordCount || 1) / Math.max(100, preferences.wpm)) * 60)));
       }
     };
     loadDocument().catch(() => undefined);
@@ -129,9 +138,8 @@ export default function Home() {
   }, [documentId, elapsed, totalDuration, wordIndex]);
 
   useEffect(() => {
-    if (!documentId || (wordIndex % 30 !== 0 && wordIndex !== readerWords.length - 1)) return;
-    updateDocumentProgress(documentId, Math.min(100, (wordIndex / Math.max(1, readerWords.length - 1)) * 100)).catch(() => undefined);
-  }, [documentId, readerWords.length, wordIndex]);
+    if (documentId && !isPlaying) persistBookmark(wordIndex);
+  }, [documentId, isPlaying, wordIndex]);
 
   useEffect(() => {
     if (!showAchievement) return;
@@ -169,9 +177,7 @@ export default function Home() {
   const progress = Math.min(100, (elapsed / totalDuration) * 100);
   const themeClass = `theme-${preferences.theme}`;
   const typeface = { system: '"DM Sans", Arial, sans-serif', atkinson: '"Atkinson Hyperlegible", Arial, sans-serif', dyslexic: '"OpenDyslexic", "Comic Sans MS", sans-serif', mono: 'ui-monospace, "SFMono-Regular", Consolas, monospace' }[preferences.typeface];
-  const backgroundImage = preferences.theme === "light" || preferences.theme === "sepia"
-    ? "url('/manus-storage/steppr-light-paper-field_ff0d1874.png')"
-    : "url('/manus-storage/steppr-dark-signal-field_34499432.png')";
+  const backgroundImage = "none";
   const resetReader = () => { setIsPlaying(false); setElapsed(0); setWordIndex(0); setShowAchievement(false); };
   const mirrorWords = [readerWords[Math.max(0, wordIndex - 1)] ?? word, word, readerWords[Math.min(readerWords.length - 1, wordIndex + 1)] ?? word];
   const activeSentenceIndex = Math.max(0, sentences.findIndex((sentence) => wordIndex >= sentence.start && wordIndex <= sentence.end));
@@ -232,7 +238,7 @@ export default function Home() {
             </section>
           </section>
         </div>
-        <footer className="reader-footer"><span>STEPPR ENGINE <i /> DEVICE-LOCAL</span><span>WPM {preferences.wpm} <i /> {mode === "fast" ? "FAST MODE" : "SENTENCE BREATHING"}</span></footer>
+        <footer className="reader-footer"><span>STEPPR ENGINE <i /> DEVICE-LOCAL</span><span>WPM {preferences.wpm} <i /> {mode === "fast" ? "FAST MODE" : "SENTENCE BREATHING"}</span><small>Designed as a non-medical reading tool. Steppr provides functional reading controls only.</small></footer>
       </section>
       {showAchievement && <div className="achievement-layer" role="dialog" aria-modal="true" aria-labelledby="achievement-title"><div className="achievement-card"><button className="achievement-close" onClick={() => setShowAchievement(false)} aria-label="Close achievement card"><X size={18} /></button><div className="achievement-mark"><Sparkles size={24} /></div><span className="eyebrow">SESSION COMPLETE</span><h2 id="achievement-title">Your pace held.</h2><p>The local session is complete. Nothing was uploaded or shared.</p><div className="achievement-stats"><span><b>{preferences.wpm}</b><small>Peak WPM</small></span><span><b>1,468</b><small>Words read</small></span><span><b>4</b><small>Day streak</small></span></div><button className="achievement-reset" onClick={resetReader}><Check size={16} /> Start a new pass</button></div></div>}
       <AccessibilityDrawer open={isAccessibilityOpen} onClose={() => setAccessibilityOpen(false)} preferences={preferences} updatePreferences={updatePreferences} />
