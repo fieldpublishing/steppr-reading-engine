@@ -31,3 +31,5 @@
 - [x] Configure offline manifest and service-worker staging with local shell caching.
 - [x] Align local-only disclaimers and dynamic privacy badges across reader and lab views.
 - [x] Complete final build, console, state-transition, and file-parsing audit.
+- [x] Repair the Vite preview HMR WebSocket connection and verify reconnection stability.
+- [x] Apply the final dashboard visual review as an instrument-style status-console refinement.

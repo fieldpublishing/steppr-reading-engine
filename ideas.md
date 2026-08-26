@@ -48,3 +48,6 @@
 - Preserve the supplied screenshots as the ground-truth layout for the primary desktop reader surface.
 - Keep cards slightly rounded (16px) and use depth only to separate functional layers, never as decoration.
 - Ensure light and dark themes share component placement and interaction behavior, while shifting only their material system and emphasis colors.
+- Dashboard screens read as **status consoles**, using calibrated readings, labeled compartments, and direct operational state language rather than SaaS-style reassurance.
+- **Signal Teal** (`#16B8C5`) denotes device activity and controls; amber/editorial orange is reserved for reading focus, active-document attention, and ORP-adjacent signals.
+- Dashboard headlines describe the current reading state or next reading action in concise operational language.
