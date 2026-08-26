@@ -13,3 +13,8 @@
 - [x] Rebuild the header lockup to match the official Steppr Tech arrangement with no visible white image background.
 - [x] Make the header logo strictly monochrome and center the active page title without the teal book indicator.
 - [x] Verify the active page title remains centered independently of the logo and controls.
+- [x] Audit and verify routes for Dashboard, Reader Engine, Library, Testing Lab, Analytics, and Settings.
+- [x] Add browser-local TXT, Markdown, PDF, and EPUB import paths with IndexedDB persistence.
+- [x] Harden dual ORP playback, WPM, sentence breathing, keyboard shortcuts, and font scaling.
+- [x] Reduce Settings to theme selection and global font scale controls.
+- [x] Validate imports, persistence, routing, and reader-control flows.

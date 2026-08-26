@@ -2,13 +2,12 @@
  * Instrument Panel design system: universal navigation and accessible device-local controls.
  * The header keeps every local-first workspace in reach without distracting from the reader.
  */
-import { Accessibility, BookOpenText, ChevronRight, FileBarChart, FlaskConical, LayoutDashboard, LibraryBig, Menu, MoonStar, PanelTop, Settings2, SunMedium } from "lucide-react";
+import { Accessibility, ChevronRight, FileBarChart, FlaskConical, LayoutDashboard, LibraryBig, Menu, MoonStar, PanelTop, Settings2, SunMedium } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import type { ReaderPreferences } from "@/hooks/useReaderPreferences";
 import StepprLogo from "@/components/StepprLogo";
 
 const navigation = [
-  { href: "/landing", label: "Overview", icon: BookOpenText },
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/pacing-engine", label: "Pacing Engine", icon: PanelTop },
   { href: "/library", label: "Library", icon: LibraryBig },

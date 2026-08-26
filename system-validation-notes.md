@@ -5,3 +5,9 @@ The Testing Lab route loaded through the global navigation and showed the gated 
 The header brand treatment was then replaced with a transparent CSS lockup that retains the folded-book silhouette and stacked STEPPR. TECH wordmark without a raster background rectangle. Desktop screenshots confirmed the seamless lockup in the dark dashboard and pacing-engine headers, while a live browser check confirmed clean contrast in the light theme.
 
 The final logo revision uses a native recreation of the supplied lockup rather than a background-bearing image crop. It preserves the folded-book motif and stacked STEPPR. TECH arrangement while inheriting the header surface color. Dark dashboard and pacing-engine screenshots confirm that the logo has no visible rectangular tile.
+
+Core-sprint validation confirmed that all six required routes render through the shared header: Dashboard, Pacing Engine, Library, Testing Lab, Analytics, and Settings. The Library surface advertises the new TXT, Markdown, PDF, and EPUB local parsing flow, while the reader exposes dual ORP, WPM, playback, sentence-breathing, and font-scale controls. A persisted completion overlay was dismissed successfully so active reader controls remain reachable.
+
+In the live reader, the Space shortcut changed the primary control to Pause and advanced the ORP focus word through the parsed sample content. Arrow Up increased the persisted pace from 925 to 950 WPM while playback continued; the active context sentence and remaining-time telemetry updated in step.
+
+Browser-console verification created a TXT File object, parsed it, stored it in IndexedDB, retrieved its text successfully, and then cleaned up the test record. The persisted result reported `kind: txt`, `parseStatus: ready`, and `wordCount: 9`. The streamlined Settings route exposes only the required theme choices and a global font-scale slider.

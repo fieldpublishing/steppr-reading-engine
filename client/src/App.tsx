@@ -8,7 +8,6 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Analytics from "./pages/Analytics";
 import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
-import Landing from "./pages/Landing";
 import Library from "./pages/Library";
 import Settings from "./pages/Settings";
 import TestingLab from "./pages/TestingLab";
@@ -18,7 +17,6 @@ function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Dashboard} />
-      <Route path={"/landing"} component={Landing} />
       <Route path={"/pacing-engine"} component={Home} />
       <Route path={"/library"} component={Library} />
       <Route path={"/testing-lab"} component={TestingLab} />

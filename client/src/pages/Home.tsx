@@ -4,19 +4,25 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronLeft, CircleHelp, CopyCheck, Gauge, Pause, Play, Redo2, Rewind, SkipBack, SkipForward, Sparkles, Volume2, X, Zap } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import AccessibilityDrawer from "@/components/AccessibilityDrawer";
 import GlobalHeader from "@/components/GlobalHeader";
 import WpmDial from "@/components/WpmDial";
 import { useReaderPreferences } from "@/hooks/useReaderPreferences";
-import { getLocalTelemetry, saveReadingSession, updateLocalTelemetry } from "@/lib/localStore";
+import { getLocalDocument, getLocalTelemetry, saveReadingSession, updateDocumentProgress, updateLocalTelemetry } from "@/lib/localStore";
 
-const wordSequence = ["re·markable", "attention", "momentum", "deliberate", "possibility"];
-const paragraphs = [
-  "Every action you take is a vote for the type of person you wish to become. If you want to be healthy, you need to make healthy choices. If you want to be wealthy, you need to make wealthy choices.",
-  "You do not rise to the level of your goals. You fall to the level of your systems.",
-  "Here is the most practical way I know to get 1 percent better every day. It’s called the Habits Scorecard. Print it out, fill it in, and begin to track your habits.",
-];
+const sampleReaderText = "Every action you take is a vote for the type of person you wish to become. If you want to be healthy, you need to make healthy choices. If you want to be wealthy, you need to make wealthy choices. You do not rise to the level of your goals. You fall to the level of your systems. Here is the most practical way I know to get 1 percent better every day. It’s called the Habits Scorecard. Print it out, fill it in, and begin to track your habits.";
+const tokenize = (text: string) => text.match(/\S+/g) ?? [];
+const toSentences = (text: string) => {
+  let wordCursor = 0;
+  const sentences = (text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) ?? [text]).map((sentence) => {
+    const words = tokenize(sentence);
+    const result = { text: sentence.trim(), start: wordCursor, end: wordCursor + Math.max(0, words.length - 1) };
+    wordCursor += words.length;
+    return result;
+  }).filter((sentence) => sentence.text);
+  return sentences.length ? sentences : [{ text, start: 0, end: Math.max(0, tokenize(text).length - 1) }];
+};
 
 const formatTime = (seconds: number) => {
   const safeSeconds = Math.max(0, Math.round(seconds));
@@ -25,6 +31,7 @@ const formatTime = (seconds: number) => {
 
 export default function Home() {
   const { preferences, updatePreferences } = useReaderPreferences();
+  const [location] = useLocation();
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isAccessibilityOpen, setAccessibilityOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -34,22 +41,58 @@ export default function Home() {
   const [wordIndex, setWordIndex] = useState(0);
   const [showAchievement, setShowAchievement] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
-  const totalDuration = 718;
+  const [readerText, setReaderText] = useState(sampleReaderText);
+  const [documentTitle, setDocumentTitle] = useState("Atomic Habits — Chapter 1");
+  const documentId = useMemo(() => new URLSearchParams(window.location.search).get("document"), [location]);
+  const readerWords = useMemo(() => tokenize(readerText), [readerText]);
+  const sentences = useMemo(() => toSentences(readerText), [readerText]);
+  const totalDuration = Math.max(30, Math.round((readerWords.length / Math.max(100, preferences.wpm)) * 60));
 
   const changeWord = (direction: 1 | -1) => {
-    setWordIndex((previous) => (previous + direction + wordSequence.length) % wordSequence.length);
+    setWordIndex((previous) => Math.max(0, Math.min(readerWords.length - 1, previous + direction)));
   };
+
+  const changeSentence = (direction: 1 | -1) => {
+    const currentSentenceIndex = Math.max(0, sentences.findIndex((sentence) => wordIndex >= sentence.start && wordIndex <= sentence.end));
+    const target = Math.max(0, Math.min(sentences.length - 1, currentSentenceIndex + direction));
+    setWordIndex(sentences[target].start);
+  };
+
+  useEffect(() => {
+    let active = true;
+    if (!documentId) {
+      setReaderText(sampleReaderText);
+      setDocumentTitle("Atomic Habits — Chapter 1");
+      setWordIndex(0);
+      setElapsed(0);
+      return () => { active = false; };
+    }
+    const loadDocument = async () => {
+      const document = await getLocalDocument(documentId);
+      if (!active || !document) return;
+      if (document.parseStatus === "ready" && document.text) {
+        setReaderText(document.text);
+        setDocumentTitle(document.name);
+        setWordIndex(0);
+        setElapsed(0);
+      }
+    };
+    loadDocument().catch(() => undefined);
+    return () => { active = false; };
+  }, [documentId]);
 
   useEffect(() => {
     if (!isPlaying || elapsed >= totalDuration) return;
     const baseDuration = 60000 / preferences.wpm;
-    const wordDuration = Math.max(24, baseDuration * (mode === "breathing" ? commaPause : 1));
+    const currentWord = readerWords[wordIndex] ?? "";
+    const punctuationMultiplier = /[.!?]$/.test(currentWord) ? Math.max(1.8, commaPause) : /[,;:]$/.test(currentWord) ? commaPause : 1;
+    const wordDuration = Math.max(24, baseDuration * (mode === "breathing" ? punctuationMultiplier : 1));
     const timer = window.setTimeout(() => {
-      changeWord(1);
+      setWordIndex((previous) => Math.min(readerWords.length - 1, previous + 1));
       setElapsed((previous) => Math.min(totalDuration, previous + wordDuration / 1000));
     }, wordDuration);
     return () => window.clearTimeout(timer);
-  }, [commaPause, elapsed, isPlaying, mode, preferences.wpm, wordIndex]);
+  }, [commaPause, elapsed, isPlaying, mode, preferences.wpm, readerWords, totalDuration, wordIndex]);
 
   useEffect(() => {
     if (elapsed >= totalDuration) {
@@ -59,8 +102,13 @@ export default function Home() {
   }, [elapsed]);
 
   useEffect(() => {
-    window.localStorage.setItem("steppr.reader.session.v1", JSON.stringify({ tokenIndex: wordIndex, elapsed, totalDuration, updatedAt: Date.now() }));
-  }, [elapsed, totalDuration, wordIndex]);
+    window.localStorage.setItem("steppr.reader.session.v1", JSON.stringify({ documentId, tokenIndex: wordIndex, elapsed, totalDuration, updatedAt: Date.now() }));
+  }, [documentId, elapsed, totalDuration, wordIndex]);
+
+  useEffect(() => {
+    if (!documentId || (wordIndex % 30 !== 0 && wordIndex !== readerWords.length - 1)) return;
+    updateDocumentProgress(documentId, Math.min(100, (wordIndex / Math.max(1, readerWords.length - 1)) * 100)).catch(() => undefined);
+  }, [documentId, readerWords.length, wordIndex]);
 
   useEffect(() => {
     if (!showAchievement) return;
@@ -68,14 +116,14 @@ export default function Home() {
       try {
         const current = await getLocalTelemetry();
         const activeDays = Array.from(new Set([...current.activeDays, new Date().toISOString().slice(0, 10)]));
-        await saveReadingSession({ id: sessionId, documentId: "sample-atomic-habits", startedAt: Date.now() - Math.round(elapsed * 1000), completedAt: Date.now(), tokenIndex: wordIndex, totalTokens: wordSequence.length, peakWpm: preferences.wpm, wordsRead: 1468 });
-        await updateLocalTelemetry({ totalWords: current.totalWords + 1468, totalFocusSeconds: current.totalFocusSeconds + Math.round(elapsed), completedSessions: current.completedSessions + 1, activeDays });
+        await saveReadingSession({ id: sessionId, documentId: documentId ?? "sample-atomic-habits", startedAt: Date.now() - Math.round(elapsed * 1000), completedAt: Date.now(), tokenIndex: wordIndex, totalTokens: readerWords.length, peakWpm: preferences.wpm, wordsRead: readerWords.length });
+        await updateLocalTelemetry({ totalWords: current.totalWords + readerWords.length, totalFocusSeconds: current.totalFocusSeconds + Math.round(elapsed), completedSessions: current.completedSessions + 1, activeDays });
       } catch {
         // IndexedDB can be unavailable in privacy-restricted browsing contexts; the reader itself remains functional.
       }
     };
     recordLocalCompletion();
-  }, [elapsed, preferences.wpm, sessionId, showAchievement, wordIndex]);
+  }, [documentId, elapsed, preferences.wpm, readerWords.length, sessionId, showAchievement, wordIndex]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -85,15 +133,15 @@ export default function Home() {
       if (event.code === "Space") { event.preventDefault(); setIsPlaying((playing) => !playing); }
       if (event.key === "ArrowUp" || event.key === "+" || event.key === "=") { event.preventDefault(); updatePreferences((current) => ({ wpm: current.wpm + 25 })); }
       if (event.key === "ArrowDown" || event.key === "-") { event.preventDefault(); updatePreferences((current) => ({ wpm: current.wpm - 25 })); }
-      if (event.key === "ArrowRight" || event.key.toLowerCase() === "n") { event.preventDefault(); changeWord(1); }
-      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "p") { event.preventDefault(); changeWord(-1); }
+      if (event.key === "ArrowRight" || event.key.toLowerCase() === "n") { event.preventDefault(); changeSentence(1); }
+      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "p") { event.preventDefault(); changeSentence(-1); }
       if (event.key.toLowerCase() === "m") { event.preventDefault(); updatePreferences((current) => ({ tripleMirror: !current.tripleMirror })); }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [updatePreferences]);
+  }, [changeSentence, updatePreferences]);
 
-  const word = wordSequence[wordIndex];
+  const word = readerWords[wordIndex] ?? "…";
   const focusIndex = useMemo(() => Math.max(1, Math.min(word.length - 2, Math.round(word.length * 0.42))), [word]);
   const progress = Math.min(100, (elapsed / totalDuration) * 100);
   const themeClass = `theme-${preferences.theme}`;
@@ -101,11 +149,13 @@ export default function Home() {
     ? "url('/manus-storage/steppr-light-paper-field_ff0d1874.png')"
     : "url('/manus-storage/steppr-dark-signal-field_34499432.png')";
   const resetReader = () => { setIsPlaying(false); setElapsed(0); setWordIndex(0); setShowAchievement(false); };
-  const mirrorWords = [wordSequence[(wordIndex - 1 + wordSequence.length) % wordSequence.length], word, wordSequence[(wordIndex + 1) % wordSequence.length]];
+  const mirrorWords = [readerWords[Math.max(0, wordIndex - 1)] ?? word, word, readerWords[Math.min(readerWords.length - 1, wordIndex + 1)] ?? word];
+  const activeSentenceIndex = Math.max(0, sentences.findIndex((sentence) => wordIndex >= sentence.start && wordIndex <= sentence.end));
+  const contextSentences = sentences.slice(Math.max(0, activeSentenceIndex - 1), activeSentenceIndex + 2);
 
   return (
     <main className={`steppr-app ${themeClass} ${preferences.highContrast ? "high-contrast" : ""} ${preferences.reducedMotion ? "motion-reduced" : ""}`} style={{ "--steppr-field": backgroundImage, "--reader-letter-spacing": `${preferences.letterSpacing}em`, "--reader-line-height": preferences.lineSpacing } as React.CSSProperties}>
-      <GlobalHeader preferences={preferences} updatePreferences={updatePreferences} onOpenAccessibility={() => setAccessibilityOpen(true)} onOpenMenu={() => setSidebarOpen(true)} />
+      <GlobalHeader title={documentTitle} preferences={preferences} updatePreferences={updatePreferences} onOpenAccessibility={() => setAccessibilityOpen(true)} onOpenMenu={() => setSidebarOpen(true)} />
       <aside className={`reader-sidebar ${isSidebarOpen ? "is-open" : ""}`} aria-label="Reader navigation">
         <div className="sidebar-topline"><span className="tiny-status"><span /> LOCAL SESSION</span><button className="global-icon-button" onClick={() => setSidebarOpen(false)} aria-label="Close navigation"><ChevronLeft size={18} /></button></div>
         <nav>
@@ -137,7 +187,7 @@ export default function Home() {
             </article>
             <article className="orp-card context-card">
               <div className="context-header"><div className="card-label"><span>ORP 2</span><i /> Context</div><span className="context-meta">LOCAL POSITION</span></div>
-              <div className="context-copy" style={{ fontSize: `${preferences.fontScale}rem` }}><p>{paragraphs[0]}</p><p className="active-sentence">{paragraphs[1]}</p><p>{paragraphs[2]}</p></div>
+              <div className="context-copy" style={{ fontSize: `${preferences.fontScale}rem` }}>{contextSentences.map((sentence, index) => <p key={`${sentence.start}-${index}`} className={sentence.start === sentences[activeSentenceIndex].start ? "active-sentence" : ""}>{sentence.text}</p>)}</div>
               <div className="scroll-rail" aria-hidden="true"><span style={{ height: `${Math.max(18, progress)}%` }} /></div>
             </article>
           </section>
@@ -146,7 +196,7 @@ export default function Home() {
             <WpmDial wpm={preferences.wpm} onChange={(wpm) => updatePreferences({ wpm })} />
             <section className="control-bay playback-bay" aria-label="Playback controls">
               <div className="bay-label">Playback</div>
-              <div className="transport-row"><button className="transport-button" onClick={() => setElapsed((seconds) => Math.max(0, seconds - 10))}><Rewind size={22} /><span>Back 10s</span></button><button className="transport-button" onClick={() => changeWord(-1)}><SkipBack size={22} /><span>Previous<br />sentence</span></button><button className={`play-button ${isPlaying ? "is-playing" : ""}`} onClick={() => setIsPlaying((playing) => !playing)} aria-label={isPlaying ? "Pause reader" : "Play reader"}>{isPlaying ? <Pause size={27} fill="currentColor" /> : <Play size={27} fill="currentColor" />}</button><button className="transport-button" onClick={() => changeWord(1)}><SkipForward size={22} /><span>Next<br />sentence</span></button><button className="transport-button" onClick={resetReader}><Redo2 size={22} /><span>Reset</span></button></div>
+              <div className="transport-row"><button className="transport-button" onClick={() => setElapsed((seconds) => Math.max(0, seconds - 10))}><Rewind size={22} /><span>Back 10s</span></button><button className="transport-button" onClick={() => changeSentence(-1)}><SkipBack size={22} /><span>Previous<br />sentence</span></button><button className={`play-button ${isPlaying ? "is-playing" : ""}`} onClick={() => setIsPlaying((playing) => !playing)} aria-label={isPlaying ? "Pause reader" : "Play reader"}>{isPlaying ? <Pause size={27} fill="currentColor" /> : <Play size={27} fill="currentColor" />}</button><button className="transport-button" onClick={() => changeSentence(1)}><SkipForward size={22} /><span>Next<br />sentence</span></button><button className="transport-button" onClick={resetReader}><Redo2 size={22} /><span>Reset</span></button></div>
               <div className="progress-wrap"><div className="progress-track"><span style={{ width: `${progress}%` }} /></div><div className="progress-labels"><span><b>{formatTime(elapsed)}</b> elapsed</span><span><b>{formatTime(totalDuration - elapsed)}</b> remaining</span></div></div>
               <p className="shortcut-hint"><kbd>SPACE</kbd> {isPlaying ? "pause" : "play"} <span>·</span> <kbd>↑</kbd><kbd>↓</kbd> speed <span>·</span> <kbd>←</kbd><kbd>→</kbd> sentence</p>
             </section>
