@@ -4,6 +4,11 @@
  */
 import JSZip from "jszip";
 
+export const LOCAL_DATA_CHANGED_EVENT = "steppr:local-data-changed";
+export const notifyLocalDataChanged = () => {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(LOCAL_DATA_CHANGED_EVENT));
+};
+
 let pdfWorkerConfigured = false;
 const loadPdfParser = async () => {
   const [{ getDocument, GlobalWorkerOptions }, workerModule] = await Promise.all([import("pdfjs-dist"), import("pdfjs-dist/build/pdf.worker.min.mjs?url")]);
@@ -193,6 +198,7 @@ export async function saveLocalDocument(file: File, onProgress?: (progress: Pars
   const transaction = database.transaction("documents", "readwrite");
   await transactionResult(transaction.objectStore("documents").put(document));
   database.close();
+  notifyLocalDataChanged();
   return document;
 }
 
@@ -211,6 +217,7 @@ export async function updateDocumentProgress(id: string, progress: number): Prom
   const document = await transactionResult(store.get(id)) as LocalDocument | undefined;
   if (document) await transactionResult(store.put({ ...document, progress: Math.max(0, Math.min(100, progress)), lastOpenedAt: Date.now() }));
   database.close();
+  notifyLocalDataChanged();
 }
 
 export async function updateDocumentBookmark(id: string, bookmark: { progress: number; sentenceIndex: number; wordIndex: number }): Promise<void> {
@@ -220,6 +227,7 @@ export async function updateDocumentBookmark(id: string, bookmark: { progress: n
   const document = await transactionResult(store.get(id)) as LocalDocument | undefined;
   if (document) await transactionResult(store.put({ ...document, progress: Math.max(0, Math.min(100, bookmark.progress)), resumeSentenceIndex: Math.max(0, bookmark.sentenceIndex), resumeWordIndex: Math.max(0, bookmark.wordIndex), lastOpenedAt: Date.now() }));
   database.close();
+  notifyLocalDataChanged();
 }
 
 export async function deleteLocalDocument(id: string): Promise<void> {
@@ -227,6 +235,7 @@ export async function deleteLocalDocument(id: string): Promise<void> {
   const transaction = database.transaction("documents", "readwrite");
   await transactionResult(transaction.objectStore("documents").delete(id));
   database.close();
+  notifyLocalDataChanged();
 }
 
 export async function putLocalDocument(document: LocalDocument): Promise<void> {
@@ -234,6 +243,7 @@ export async function putLocalDocument(document: LocalDocument): Promise<void> {
   const transaction = database.transaction("documents", "readwrite");
   await transactionResult(transaction.objectStore("documents").put(document));
   database.close();
+  notifyLocalDataChanged();
 }
 
 export async function saveReadingSession(session: ReadingSession): Promise<void> {
@@ -241,6 +251,7 @@ export async function saveReadingSession(session: ReadingSession): Promise<void>
   const transaction = database.transaction("sessions", "readwrite");
   await transactionResult(transaction.objectStore("sessions").put(session));
   database.close();
+  notifyLocalDataChanged();
 }
 
 export async function listReadingSessions(): Promise<ReadingSession[]> {
@@ -256,6 +267,7 @@ export async function saveDiagnosticResult(result: DiagnosticResult): Promise<vo
   const transaction = database.transaction("diagnostics", "readwrite");
   await transactionResult(transaction.objectStore("diagnostics").put(result));
   database.close();
+  notifyLocalDataChanged();
 }
 
 export async function listDiagnosticResults(): Promise<DiagnosticResult[]> {
@@ -281,6 +293,7 @@ export async function updateLocalTelemetry(update: Partial<Omit<LocalTelemetry, 
   const transaction = database.transaction("telemetry", "readwrite");
   await transactionResult(transaction.objectStore("telemetry").put(next));
   database.close();
+  notifyLocalDataChanged();
   return next;
 }
 
@@ -289,6 +302,7 @@ export async function replaceLocalTelemetry(telemetry: LocalTelemetry): Promise<
   const transaction = database.transaction("telemetry", "readwrite");
   await transactionResult(transaction.objectStore("telemetry").put({ ...telemetry, id: "lifetime" }));
   database.close();
+  notifyLocalDataChanged();
 }
 
 export async function deleteLocalDatabase(): Promise<void> {
@@ -298,4 +312,5 @@ export async function deleteLocalDatabase(): Promise<void> {
     request.onerror = () => reject(request.error);
     request.onblocked = () => reject(new Error("Close other Steppr tabs before purging local data."));
   });
+  notifyLocalDataChanged();
 }

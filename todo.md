@@ -35,3 +35,4 @@
 - [x] Bypass Vite preview modules in the local PWA cache while retaining production offline shell behavior.
 - [x] Apply the final dashboard visual review as an instrument-style status-console refinement.
 - [x] Inspect the attached update brief and apply the requested Steppr project changes.
+- [x] Replace dashboard preview readings with live IndexedDB session aggregates and validate real-time accuracy.
