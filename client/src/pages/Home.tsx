@@ -93,7 +93,7 @@ export default function Home() {
   }, [documentId]);
 
   useEffect(() => {
-    if (Number.isFinite(requestedWpm) && requestedWpm >= 100 && requestedWpm <= 3700 && requestedWpm !== preferences.wpm) updatePreferences({ wpm: requestedWpm });
+    if (Number.isFinite(requestedWpm) && requestedWpm >= 100 && requestedWpm <= 2500 && requestedWpm !== preferences.wpm) updatePreferences({ wpm: requestedWpm });
   }, [preferences.wpm, requestedWpm, updatePreferences]);
 
   useEffect(() => {
